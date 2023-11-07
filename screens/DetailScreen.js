@@ -1,107 +1,58 @@
 import React, { useState } from 'react';
-import { collection, doc, setDoc, addDoc } from "firebase/firestore";
-import { db } from "../components/config"
-import { Text, View, Pressable, TextInput, StyleSheet } from 'react-native';
-import { useNavigation } from '@react-navigation/native'; // Import this hook
+import { Text, View, Pressable, TextInput, Keyboard } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import { doc, setDoc } from "firebase/firestore";
+import { db } from "../components/FirebaseConfigs";
+import styles from '../components/Styles';
 
-function DetailScreen({ route }) {
-  const { item } = route.params;
-  const navigation = useNavigation(); // Use the navigation hook
+export default function DetailScreen({ route }) {
+  const navigation = useNavigation();
+  const item = route.params ? route.params.item : undefined; // Ensure 'item' is not null
+  const isNewNote = !item || !item.id; // Check if it's a new note
 
-  const [editingTitle, setEditingTitle] = useState(false);
-  const [editingText, setEditingText] = useState(false);
-  const [editedTitle, setEditedTitle] = useState(item.title);
-  const [editedText, setEditedText] = useState(item.text);
+  const [editedTitle, setEditedTitle] = useState(item ? item.title : '');
+  const [editedText, setEditedText] = useState(item ? item.text : '');
 
-  const startEditingTitle = () => {
-    setEditingTitle(true);
-  };
+  async function saveNote() {
+    const noteRef = doc(db, "notes", item.id);
 
-  const startEditingText = () => {
-    setEditingText(true);
-  };
-
-  const saveTitle = () => {
-    setEditingTitle(editedTitle);
-    // Implement logic to save the edited title here
-  };
-
-  const saveText = () => {
-    setEditingText(editedText);
-    // Implement logic to save the edited text here
-  };
-
-  function create() {
-    // Submit data
-    addDoc(collection(db, "notes"), {
-      title: editedTitle,
-      text: editedText,
-    }).then(() => {
-      // Submit was successfully!)
-      console.log('data submitted');
-    }).catch((error) => {
-      //Submit failed
-      console.log(error)
-    });
+    try {
+      await setDoc(noteRef, {
+        title: editedTitle,
+        text: editedText
+      }, { merge: true });
+      console.log('Note updated successfully!');
+      navigation.goBack(); // Return to the previous screen
+    } catch (error) {
+      console.error('Error updating note:', error);
+    }
   }
 
   return (
     <View style={styles.container}>
-
-      <Pressable onPress={startEditingTitle}>
-        {editingTitle ? (
-          <TextInput
-            value={editedTitle}
-            onChangeText={setEditedTitle}
-            onBlur={saveTitle}
-            autoFocus
-            style={styles.textBoxes}
-          />
-        ) : (
-          <Text>Title: {item.title}</Text>
-        )}
+      <TextInput
+        value={editedTitle}
+        onChangeText={setEditedTitle}
+        placeholder="Note Title"
+        autoFocus={!item} // Focus only when creating a new note
+        style={styles.titleInput}
+      />
+      <TextInput
+        value={editedText}
+        onChangeText={setEditedText}
+        placeholder="Note Text"
+        style={styles.textInput}
+        // multiline
+        numberOfLines={4}
+        keyboardType="default"
+        returnKeyType="done"
+        multiline={true}
+        blurOnSubmit={true}
+        onSubmitEditing={() => { Keyboard.dismiss() }}
+      />
+      <Pressable style={styles.submitButton} onPress={saveNote}>
+        <Text style={styles.submitButtonText}>{isNewNote ? 'Add Note' : 'Save Changes'}</Text>
       </Pressable>
-      
-      <Pressable onPress={startEditingText}>
-        {editingText ? (
-          <TextInput
-            value={editedText}
-            onChangeText={setEditedText}
-            onBlur={saveText}
-            autoFocus
-            style={styles.textBoxes}
-          />
-        ) : (
-          <Text>Text: {item.text}</Text>
-        )}
-      </Pressable>
-
-      <Pressable title="Submit Data" onPress={() => {create(); navigation.goBack();}} />
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  modalContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'white',
-    padding: 20,
-  },
-  textInput: {
-    width: '100%',
-    fontSize: 18,
-    padding: 12,
-    borderColor: 'gray',
-    borderWidth: 0.2,
-    borderRadius: 10,
-    marginBottom: 10,
-  },
-});
-
-export default DetailScreen;

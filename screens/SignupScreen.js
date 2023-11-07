@@ -1,23 +1,30 @@
 import React, { useState } from 'react';
 import { View, TextInput, Text, Pressable } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
+import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
 import styles from '../components/Styles';
 
-export default function AuthScreen() {
-    const navigation = useNavigation();
+export default function SignupScreen({ navigation }) {
     const auth = getAuth();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
     const [message, setMessage] = useState('');
     const [isError, setIsError] = useState(false);
 
-    async function handleSignIn() {
+    async function handleSignUp() {
+        if (password !== confirmPassword) {
+            setMessage('Passwords do not match.');
+            setIsError(true);
+            return;
+        }
+
         setMessage('');
         setIsError(false);
         try {
-            await signInWithEmailAndPassword(auth, email, password);
-            navigation.replace('ListScreen');
+            await createUserWithEmailAndPassword(auth, email, password);
+            setMessage('You have signed up successfully!');
+            setIsError(false);
+            navigation.goBack();
         } catch (error) {
             setMessage(error.message);
             setIsError(true);
@@ -41,17 +48,20 @@ export default function AuthScreen() {
                 style={styles.input}
                 secureTextEntry
             />
-            {message ? (
-                <Text style={isError ? styles.errorText : styles.successText}>
-                    {message}
-                </Text>
-            ) : null}
-            <Pressable style={styles.button} onPress={handleSignIn}>
-                <Text style={styles.buttonText}>Sign In</Text>
+            <TextInput
+                placeholder="Confirm Password"
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+                style={styles.input}
+                secureTextEntry
+            />
+            <Text style={isError ? styles.errorText : styles.messageText}>
+                {message}
+            </Text>
+            <Pressable style={styles.button} onPress={handleSignUp}>
+                <Text style={styles.buttonText}>Sign Up</Text>
             </Pressable>
-            <Pressable style={styles.button} onPress={() => navigation.navigate('SignupScreen')}>
-                <Text style={styles.buttonText}>Go to Sign Up</Text>
-            </Pressable>
+
         </View>
     );
 };
